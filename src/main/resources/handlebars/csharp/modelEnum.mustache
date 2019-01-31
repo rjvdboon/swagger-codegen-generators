@@ -4,16 +4,16 @@
     {{#description}}
     /// <value>{{description}}</value>
     {{/description}}
-    {{#allowableValues}}{{#enumVars}}{{#@first}}{{#isString}}
+    {{#vendorExtensions.x-enum-string}}
     [JsonConverter(typeof(StringEnumConverter))]
-    {{/isString}}{{/@first}}{{/enumVars}}{{/allowableValues}}
+    {{/vendorExtensions.x-enum-string}}
     {{>visibility}} enum {{#datatypeWithEnum}}{{.}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}}{{#vendorExtensions.x-enum-byte}}: byte{{/vendorExtensions.x-enum-byte}}
     {
         {{#allowableValues}}{{#enumVars}}
         /// <summary>
         /// Enum {{name}} for value: {{{value}}}
         /// </summary>
-        {{#isString}}[EnumMember(Value = "{{{value}}}")]{{/isString}}
-        {{name}}{{^isString}} = {{{value}}}{{/isString}}{{#isString}} = {{@index}}{{/isString}}{{^@last}},
+        {{#vendorExtensions.x-enum-string}}[EnumMember(Value = {{{value}}})]{{/vendorExtensions.x-enum-string}}
+        {{name}}{{^vendorExtensions.x-enum-string}} = {{{value}}}{{/vendorExtensions.x-enum-string}}{{#vendorExtensions.x-enum-string}} = {{@index}}{{/vendorExtensions.x-enum-string}}{{^@last}},
         {{/@last}}{{/enumVars}}{{/allowableValues}}
     }{{! NOTE: This model's enumVars is modified to look like CodegenProperty}}

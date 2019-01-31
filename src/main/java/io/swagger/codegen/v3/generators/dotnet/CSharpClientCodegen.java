@@ -29,6 +29,8 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 public class CSharpClientCodegen extends AbstractCSharpCodegen {
     @SuppressWarnings({"hiding"})
     private static final Logger LOGGER = LoggerFactory.getLogger(CSharpClientCodegen.class);
+    private static final String NET471 = "v4.7.1";
+    private static final String NET461 = "v4.6.1";
     private static final String NET45 = "v4.5";
     private static final String NET40 = "v4.0";
     private static final String NET35 = "v3.5";
@@ -48,10 +50,10 @@ public class CSharpClientCodegen extends AbstractCSharpCodegen {
     protected String modelDocPath = "docs/";
 
     // Defines TargetFrameworkVersion in csproj files
-    protected String targetFramework = NET45;
+    protected String targetFramework = NET461;
 
     // Defines nuget identifiers for target framework
-    protected String targetFrameworkNuget = "net45";
+    protected String targetFrameworkNuget = "net461";
     protected boolean supportsAsync = Boolean.TRUE;
     protected boolean supportsUWP = Boolean.FALSE;
     protected boolean netStandard = Boolean.FALSE;
@@ -106,6 +108,8 @@ public class CSharpClientCodegen extends AbstractCSharpCodegen {
                 .put(NET35, ".NET Framework 3.5 compatible")
                 .put(NET40, ".NET Framework 4.0 compatible")
                 .put(NET45, ".NET Framework 4.5+ compatible")
+                .put(NET461, ".NET Framework 4.6+ compatible")
+                .put(NET471, ".NET Framework 4.7+ compatible")
                 .put(NETSTANDARD, ".NET Standard 1.3 compatible")
                 .put(UWP, "Universal Windows Platform (IMPORTANT: this will be decommissioned and replaced by v5.0)")
                 .build();
@@ -225,7 +229,7 @@ public class CSharpClientCodegen extends AbstractCSharpCodegen {
             setTargetFramework((String) additionalProperties.get(CodegenConstants.DOTNET_FRAMEWORK));
         } else {
             // Ensure default is set.
-            setTargetFramework(NET45);
+            setTargetFramework(NET461);
             additionalProperties.put(CodegenConstants.DOTNET_FRAMEWORK, this.targetFramework);
         }
 
@@ -273,9 +277,25 @@ public class CSharpClientCodegen extends AbstractCSharpCodegen {
 
             setTargetFrameworkNuget("net40");
             setSupportsAsync(Boolean.FALSE);
-        } else {
+        } else if (NET45.equals(this.targetFramework)) {
             additionalProperties.put(MCS_NET_VERSION_KEY, "4.5.2-api");
+            additionalProperties.put("isNet45", true);
             setTargetFrameworkNuget("net45");
+            setSupportsAsync(Boolean.TRUE);
+        } else if (NET461.equals(this.targetFramework)) {
+            additionalProperties.put(MCS_NET_VERSION_KEY, "4.6.1-api");
+            additionalProperties.put("isNet46", true);
+            setTargetFrameworkNuget("net461");
+            setSupportsAsync(Boolean.TRUE);
+        } else if (NET471.equals(this.targetFramework)){
+            additionalProperties.put(MCS_NET_VERSION_KEY, "4.7.1-api");
+            additionalProperties.put("isNet47", true);
+            setTargetFrameworkNuget("net471");
+            setSupportsAsync(Boolean.TRUE);
+        } else {
+            additionalProperties.put(MCS_NET_VERSION_KEY, "4.6.1-api");
+            additionalProperties.put("isNet46", true);
+            setTargetFrameworkNuget("net461");
             setSupportsAsync(Boolean.TRUE);
         }
 
@@ -511,49 +531,51 @@ public class CSharpClientCodegen extends AbstractCSharpCodegen {
     }
 
     @Override
-    public CodegenModel fromModel(String name, Schema schema, Map<String, Schema> allDefinitions) {
-        CodegenModel codegenModel = super.fromModel(name, schema, allDefinitions);
-        if (allDefinitions != null && codegenModel != null && codegenModel.parent != null) {
-            final Schema parentModel = allDefinitions.get(toModelName(codegenModel.parent));
-            if (parentModel != null) {
-                final CodegenModel parentCodegenModel = super.fromModel(codegenModel.parent, parentModel);
-                boolean hasEnums = getBooleanValue(codegenModel, HAS_ENUMS_EXT_NAME);
-                if (hasEnums) {
-                    codegenModel = this.reconcileInlineEnums(codegenModel, parentCodegenModel);
-                }
+    public CodegenModel fromModel(String name, Schema schema, Map<String, Schema> allSchemas) {
+        CodegenModel codegenModel = super.fromModel(name, schema, allSchemas);
 
-                Map<String, CodegenProperty> propertyHash = new HashMap<>(codegenModel.vars.size());
-                for (final CodegenProperty property : codegenModel.vars) {
-                    propertyHash.put(property.name, property);
-                }
+        if (allSchemas != null && codegenModel.parentSchema != null) {
+            final Schema parentModel = allSchemas.get(codegenModel.parentSchema);
+            final CodegenModel parentCodegenModel = super.fromModel(codegenModel.parent, parentModel, allSchemas);
+            boolean hasEnums = getBooleanValue(codegenModel, HAS_ENUMS_EXT_NAME);
+            if (hasEnums) {
+              codegenModel = this.reconcileInlineEnums(codegenModel, parentCodegenModel);
+            }
 
+            Map<String, CodegenProperty> propertyHash = new HashMap<>(codegenModel.vars.size());
+            for (final CodegenProperty property : codegenModel.vars) {
+                propertyHash.put(property.name, property);
+            }
+
+            if (parentCodegenModel.discriminator != null) {
                 for (final CodegenProperty property : codegenModel.readWriteVars) {
-                    if (property.defaultValue == null && property.baseName.equals(parentCodegenModel.discriminator)) {
+                    if (property.defaultValue == null && property.baseName.equals(parentCodegenModel.discriminator.getPropertyName())) {
                         property.defaultValue = "\"" + name + "\"";
                     }
                 }
+            }
 
-                CodegenProperty last = null;
-                for (final CodegenProperty property : parentCodegenModel.vars) {
-                    // helper list of parentVars simplifies templating
-                    if (!propertyHash.containsKey(property.name)) {
-                        final CodegenProperty parentVar = property.clone();
-                        parentVar.getVendorExtensions().put(CodegenConstants.IS_INHERITED_EXT_NAME, Boolean.TRUE);
-                        parentVar.getVendorExtensions().put(CodegenConstants.HAS_MORE_EXT_NAME, Boolean.TRUE);
-                        last = parentVar;
-                        LOGGER.info("adding parent variable {}", property.name);
-                        codegenModel.parentVars.add(parentVar);
-                    }
-                }
-
-                if (last != null) {
-                    last.getVendorExtensions().put(CodegenConstants.HAS_MORE_EXT_NAME, Boolean.FALSE);
+            CodegenProperty last = null;
+            for (final CodegenProperty property : parentCodegenModel.vars) {
+                // helper list of parentVars simplifies templating
+                if (!propertyHash.containsKey(property.name)) {
+                    final CodegenProperty parentVar = property.clone();
+                    parentVar.getVendorExtensions().put(CodegenConstants.IS_INHERITED_EXT_NAME, Boolean.TRUE);
+                    parentVar.getVendorExtensions().put(CodegenConstants.HAS_MORE_EXT_NAME, Boolean.TRUE);
+                    last = parentVar;
+                    LOGGER.info("adding parent variable {}", property.name);
+                    codegenModel.parentVars.add(parentVar);
                 }
             }
+
+            if (last != null) {
+                last.getVendorExtensions().put(CodegenConstants.HAS_MORE_EXT_NAME, Boolean.FALSE);
+            }
+
         }
 
         // Cleanup possible duplicates. Currently, readWriteVars can contain the same property twice. May or may not be isolated to C#.
-        if (codegenModel != null && codegenModel.readWriteVars != null && codegenModel.readWriteVars.size() > 1) {
+        if (codegenModel.readWriteVars != null && codegenModel.readWriteVars.size() > 1) {
             int length = codegenModel.readWriteVars.size() - 1;
             for (int i = length; i > (length / 2); i--) {
                 final CodegenProperty codegenProperty = codegenModel.readWriteVars.get(i);

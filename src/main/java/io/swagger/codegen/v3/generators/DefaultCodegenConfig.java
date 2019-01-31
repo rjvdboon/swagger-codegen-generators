@@ -2235,7 +2235,7 @@ public abstract class DefaultCodegenConfig implements CodegenConfig {
             } else if (getBooleanValue(codegenProperty, CodegenConstants.IS_UUID_EXT_NAME)) {
                 codegenResponse.getVendorExtensions().put(CodegenConstants.IS_UUID_EXT_NAME, Boolean.TRUE);
             } else {
-                LOGGER.debug("Property type is not primitive: " + codegenProperty.datatype);
+                LOGGER.debug("Property type is not primitive: " + codegenProperty.datatype + " - property name: " + codegenProperty.name);
             }
 
             if (getBooleanValue(codegenProperty, CodegenConstants.IS_CONTAINER_EXT_NAME)) {
@@ -3556,7 +3556,7 @@ public abstract class DefaultCodegenConfig implements CodegenConfig {
         } else if (getBooleanValue(property, CodegenConstants.IS_DATE_TIME_EXT_NAME)) {
             parameter.getVendorExtensions().put(CodegenConstants.IS_DATE_TIME_EXT_NAME, Boolean.TRUE);
         } else {
-            LOGGER.debug("Property type is not primitive: " + property.datatype);
+            LOGGER.debug("Property type is not primitive: " + property.datatype + " @ property name: " + property.name);
             parameter.getVendorExtensions().put(CodegenConstants.IS_PRIMITIVE_TYPE_EXT_NAME, Boolean.FALSE);
         }
     }
@@ -3760,7 +3760,7 @@ public abstract class DefaultCodegenConfig implements CodegenConfig {
     protected String getTemplateDir() {
         return new StringBuilder()
                 .append(templateEngine.getName())
-                .append("/")
+                .append(File.separator)
                 .append(getDefaultTemplateDir())
                 .toString();
     }

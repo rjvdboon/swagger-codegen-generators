@@ -1,7 +1,6 @@
 package io.swagger.codegen.v3.generators.dotnet;
 
-import com.google.common.collect.ImmutableMap;
-import com.samskivert.mustache.Mustache;
+import com.github.jknack.handlebars.Handlebars;
 import io.swagger.codegen.v3.CodegenConstants;
 import io.swagger.codegen.v3.CodegenModel;
 import io.swagger.codegen.v3.CodegenOperation;
@@ -415,6 +414,7 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
 
         for (Map.Entry<String, Object> entry : models.entrySet()) {
             String swaggerName = entry.getKey();
+            LOGGER.info(String.format("postProcessEnumRefs '%s'", swaggerName));
             CodegenModel model = ModelUtils.getModelByName(swaggerName, models);
             if (model != null) {
                 for (CodegenProperty var : model.allVars) {
@@ -428,12 +428,13 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
 
                         // We do these after updateCodegenPropertyEnum to avoid generalities that don't mesh with C#.
                         var.getVendorExtensions().put(CodegenConstants.IS_PRIMITIVE_TYPE_EXT_NAME, Boolean.TRUE);
-                        var.getVendorExtensions().put(IS_ENUM_EXT_NAME, Boolean.TRUE);
+                        var.getVendorExtensions().put(CodegenConstants.IS_ENUM_EXT_NAME, Boolean.TRUE);
                     }
                 }
 
                 // We're looping all models here.
                 if (getBooleanValue(model, CodegenConstants.IS_ENUM_EXT_NAME)) {
+                    LOGGER.info(String.format("postProcessEnumRefs - %s - %s", CodegenConstants.IS_ENUM_EXT_NAME, model.toString()));
                     // We now need to make allowableValues.enumVars look like the context of CodegenProperty
                     Boolean isString = false;
                     Boolean isInteger = false;
@@ -455,6 +456,7 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
                         isString = true;
                         model.vendorExtensions.put("x-enum-string", true);
                     }
+                    LOGGER.info(String.format("  isByte=%s; isInteger=%s; isLong=%s; isString=%s postProcessEnumRefs", isByte, isInteger, isLong, isString));
 
                     // Since we iterate enumVars for modelnnerEnum and enumClass templates, and CodegenModel is missing some of CodegenProperty's properties,
                     // we can take advantage of Mustache's contextual lookup to add the same "properties" to the model's enumVars scope rather than CodegenProperty's scope.
@@ -463,12 +465,12 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
                     for (Map<String, String> enumVar : enumVars) {
                         Map<String, Object> mixedVars = new HashMap<String, Object>();
                         mixedVars.putAll(enumVar);
-
                         mixedVars.put("isString", isString);
                         mixedVars.put("isLong", isLong);
                         mixedVars.put("isInteger", isInteger);
                         mixedVars.put("isByte", isByte);
 
+                        LOGGER.info(String.format("mixedVars setting isString to %s for %s=%s", isString, enumVar.get("name"), enumVar.get("value")));
                         newEnumVars.add(mixedVars);
                     }
 
@@ -498,7 +500,7 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
         // Because C# uses nullable primitives for datatype, and datatype is used in DefaultCodegen for determining enum-ness, guard against weirdness here.
         if (getBooleanValue(var, CodegenConstants.IS_ENUM_EXT_NAME)) {
             if ("byte".equals(var.dataFormat)) {// C# Actually supports byte and short enums.
-                var.vendorExtensions.put("x-enum-byte", true);
+                var.vendorExtensions.put("x-enum-byte", Boolean.TRUE);
                 var.vendorExtensions.put(CodegenConstants.IS_STRING_EXT_NAME, Boolean.FALSE);
                 var.vendorExtensions.put(CodegenConstants.IS_LONG_EXT_NAME, Boolean.FALSE);
                 var.vendorExtensions.put(CodegenConstants.IS_INTEGER_EXT_NAME, Boolean.FALSE);
@@ -782,7 +784,7 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
         if (propertySchema instanceof ArraySchema) {
             Schema inner = ((ArraySchema) propertySchema).getItems();
             return String.format("%s<%s>", getSchemaType(propertySchema), getTypeDeclaration(inner));
-        } else if (propertySchema instanceof MapSchema && hasSchemaProperties(propertySchema)) {
+        } else if (propertySchema instanceof MapSchema || hasSchemaProperties(propertySchema)) {
             Schema inner = (Schema) propertySchema.getAdditionalProperties();
             return String.format("%s<string, %s>", getSchemaType(propertySchema), getTypeDeclaration(inner));
         }

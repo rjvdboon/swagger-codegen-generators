@@ -9,7 +9,7 @@
     {{#generatePropertyChanged}}
     [ImplementPropertyChanged]
     {{/generatePropertyChanged}}
-    {{>visibility}} partial class {{classname}} : {{#parent}}{{{parent}}}, {{/parent}} IEquatable<{{classname}}>{{^netStandard}}{{#validatable}}, IValidatableObject{{/validatable}}{{/netStandard}}
+    {{>visibility}} partial class {{classname}} :{{#parent}} {{{parent}}},{{/parent}} IEquatable<{{classname}}>{{^netStandard}}{{#validatable}}, IValidatableObject{{/validatable}}{{/netStandard}}
     {
         {{#vars}}
         {{#items.isEnum}}
@@ -49,26 +49,26 @@
         /// </summary>
         {{#vars}}
         {{^isReadOnly}}
-        /// <param name="{{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}}">{{#description}}{{description}}{{/description}}{{^description}}{{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}}{{/description}}{{#required}} (required){{/required}}{{#defaultValue}} (default to {{defaultValue}}){{/defaultValue}}.</param>
+        /// <param name="_{{camelCase name}}">{{#description}}{{description}}{{/description}}{{^description}}{{name}}{{/description}}{{#required}} (required){{/required}}{{#defaultValue}} (default to {{defaultValue}}){{/defaultValue}}.</param>
         {{/isReadOnly}}
         {{/vars}}
     {{#hasOnlyReadOnly}}
         [JsonConstructorAttribute]
     {{/hasOnlyReadOnly}}
-        public {{classname}}({{#readWriteVars}}{{{datatypeWithEnum}}}{{#isEnum}}{{^isContainer}}{{^required}}?{{/required}}{{/isContainer}}{{/isEnum}} {{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}} = {{#defaultValue}}{{{defaultValue}}}{{/defaultValue}}{{^defaultValue}}default({{{datatypeWithEnum}}}{{#isEnum}}{{^isContainer}}{{^required}}?{{/required}}{{/isContainer}}{{/isEnum}}){{/defaultValue}}{{^@last}}, {{/@last}}{{/readWriteVars}}){{#parent}} : base({{#parentVars}}{{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}}{{#hasMore}}, {{/hasMore}}{{/parentVars}}){{/parent}}
+        public {{classname}}({{#readWriteVars}}{{{datatypeWithEnum}}}{{#isEnum}}{{^isContainer}}{{^required}}?{{/required}}{{/isContainer}}{{/isEnum}} _{{camelCase name}} = {{#defaultValue}}{{{defaultValue}}}{{/defaultValue}}{{^defaultValue}}default({{{datatypeWithEnum}}}{{#isEnum}}{{^isContainer}}{{^required}}?{{/required}}{{/isContainer}}{{/isEnum}}){{/defaultValue}}{{^@last}}, {{/@last}}{{/readWriteVars}}){{#parent}} : base({{#parentVars}}_{{camelCase name}}{{#hasMore}}, {{/hasMore}}{{/parentVars}}){{/parent}}
         {
             {{#vars}}
             {{^isInherited}}
             {{^isReadOnly}}
             {{#required}}
-            // to ensure "{{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}}" is required (not null)
-            if ({{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}} == null)
+            // to ensure "{{name}}" is required (not null)
+            if (_{{camelCase name}} == null)
             {
-                throw new InvalidDataException("{{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}} is a required property for {{classname}} and cannot be null");
+                throw new InvalidDataException("{{name}} is a required property for {{classname}} and cannot be null");
             }
             else
             {
-                this.{{name}} = {{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}};
+                this.{{name}} = _{{camelCase name}};
             }
             {{/required}}
             {{/isReadOnly}}
@@ -78,18 +78,18 @@
             {{^isInherited}}
             {{^isReadOnly}}
             {{^required}}
-            {{#defaultValue}}// use default value if no "{{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}}" provided
-            if ({{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}} == null)
+            {{#defaultValue}}// use default value if no "_{{camelCase name}}" provided
+            if (_{{camelCase name}} == null)
             {
                 this.{{name}} = {{{defaultValue}}};
             }
             else
             {
-                this.{{name}} = {{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}};
+                this.{{name}} = _{{camelCase name}};
             }
             {{/defaultValue}}
             {{^defaultValue}}
-this.{{name}} = {{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}};
+this.{{name}} = _{{camelCase name}};
             {{/defaultValue}}
             {{/required}}
             {{/isReadOnly}}
@@ -235,6 +235,12 @@ this.{{name}} = {{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}};
         /// <returns>Validation Result</returns>
         protected IEnumerable<System.ComponentModel.DataAnnotations.ValidationResult> BaseValidate(ValidationContext validationContext)
         {
+            //TODO: Fix this. validate using BaseValidate. Need to virtual on base, override on derived. 
+            //{{#parent}}
+            //{{^isArrayModel}}
+            //foreach(var x in base.BaseValidate(validationContext)) yield return x;
+            //{{/isArrayModel}}
+            //{{/parent}}
 {{/discriminator}}
 {{^discriminator}}
         /// <summary>
@@ -245,11 +251,6 @@ this.{{name}} = {{#lambda.camelcase_param}}{{name}}{{/lambda.camelcase_param}};
         IEnumerable<System.ComponentModel.DataAnnotations.ValidationResult> IValidatableObject.Validate(ValidationContext validationContext)
         {
 {{/discriminator}}
-            {{#parent}}
-            {{^isArrayModel}}
-            foreach(var x in BaseValidate(validationContext)) yield return x;
-            {{/isArrayModel}}
-            {{/parent}}
             {{#vars}}
             {{#hasValidation}}
             {{#maxLength}}
