@@ -414,7 +414,6 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
 
         for (Map.Entry<String, Object> entry : models.entrySet()) {
             String swaggerName = entry.getKey();
-            LOGGER.info(String.format("postProcessEnumRefs '%s'", swaggerName));
             CodegenModel model = ModelUtils.getModelByName(swaggerName, models);
             if (model != null) {
                 for (CodegenProperty var : model.allVars) {
@@ -434,7 +433,6 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
 
                 // We're looping all models here.
                 if (getBooleanValue(model, CodegenConstants.IS_ENUM_EXT_NAME)) {
-                    LOGGER.info(String.format("postProcessEnumRefs - %s - %s", CodegenConstants.IS_ENUM_EXT_NAME, model.toString()));
                     // We now need to make allowableValues.enumVars look like the context of CodegenProperty
                     Boolean isString = false;
                     Boolean isInteger = false;
@@ -456,7 +454,6 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
                         isString = true;
                         model.vendorExtensions.put("x-enum-string", true);
                     }
-                    LOGGER.info(String.format("  isByte=%s; isInteger=%s; isLong=%s; isString=%s postProcessEnumRefs", isByte, isInteger, isLong, isString));
 
                     // Since we iterate enumVars for modelnnerEnum and enumClass templates, and CodegenModel is missing some of CodegenProperty's properties,
                     // we can take advantage of Mustache's contextual lookup to add the same "properties" to the model's enumVars scope rather than CodegenProperty's scope.
@@ -465,12 +462,12 @@ public abstract class AbstractCSharpCodegen extends DefaultCodegenConfig {
                     for (Map<String, String> enumVar : enumVars) {
                         Map<String, Object> mixedVars = new HashMap<String, Object>();
                         mixedVars.putAll(enumVar);
+
                         mixedVars.put("isString", isString);
                         mixedVars.put("isLong", isLong);
                         mixedVars.put("isInteger", isInteger);
                         mixedVars.put("isByte", isByte);
 
-                        LOGGER.info(String.format("mixedVars setting isString to %s for %s=%s", isString, enumVar.get("name"), enumVar.get("value")));
                         newEnumVars.add(mixedVars);
                     }
 
